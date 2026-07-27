@@ -1,48 +1,29 @@
-# ============================================================
-# GAUGES — PPM Framework
-# Kreisdiagramme (Plotly) für Fortschritt, Restzeit und
-# Risiko-Konfidenz. Für hellen Streamlit-Hintergrund gestylt
-# (klar lesbar, keine dunklen Flächen).
-#
-# Importiert in: src/app_v2.py
-# ============================================================
+"""Plotly-Gauges für das leakage-freie LSTM-PPM-Dashboard."""
+from __future__ import annotations
 
 import plotly.graph_objects as go
 
-# ── Textfarben, abgestimmt auf hellen Hintergrund ─────────────
-TEXT_DARK  = "#262730"   # Standard-Textfarbe von Streamlit (hell)
+TEXT_DARK = "#262730"
 TEXT_MUTED = "#6c6f7c"
-GRID_LINE  = "#e6e6e6"
-
-COLOR_NORMAL    = "#2e7d32"
-COLOR_BEOBACHT  = "#1565c0"
-COLOR_WARNUNG   = "#e65100"
-COLOR_KRITISCH  = "#c62828"
+GRID_LINE = "#e6e6e6"
 
 RISK_COLORS = {
-    0: COLOR_NORMAL,
-    1: COLOR_BEOBACHT,
-    2: COLOR_WARNUNG,
-    3: COLOR_KRITISCH,
+    0: "#2e7d32",
+    1: "#1565c0",
+    2: "#e65100",
+    3: "#c62828",
 }
 
 
-def _base_gauge(value, value_max, color, suffix="", steps=None,
-                 number_format=".0f"):
+def _base_gauge(value, value_max, color, suffix="", steps=None, number_format=".0f"):
+    value_max = max(float(value_max), 1.0)
+    value = min(max(float(value), 0.0), value_max)
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        number={
-            "suffix": suffix,
-            "valueformat": number_format,
-            "font": {"size": 28, "color": TEXT_DARK},
-        },
+        number={"suffix": suffix, "valueformat": number_format, "font": {"size": 28, "color": TEXT_DARK}},
         gauge={
-            "axis": {
-                "range": [0, value_max],
-                "tickcolor": TEXT_MUTED,
-                "tickfont": {"size": 9, "color": TEXT_MUTED},
-            },
+            "axis": {"range": [0, value_max], "tickcolor": TEXT_MUTED, "tickfont": {"size": 9, "color": TEXT_MUTED}},
             "bar": {"color": color, "thickness": 0.28},
             "bgcolor": "white",
             "bordercolor": GRID_LINE,
@@ -61,27 +42,10 @@ def _base_gauge(value, value_max, color, suffix="", steps=None,
     return fig
 
 
-def gauge_progress(pct_complete: float):
-    """Bearbeitungsfortschritt 0-100 %."""
-    return _base_gauge(
-        value=pct_complete * 100,
-        value_max=100,
-        color="#1565c0",
-        suffix=" %",
-        steps=[{"range": [0, 100], "color": "#eaf1fb"}],
-    )
 
 
 def gauge_remaining_time(remaining_h: float, elapsed_h: float):
-    """
-    Verbleibende Bearbeitungszeit in Stunden. Die Skala wird relativ
-    zum Ticket selbst gesetzt (vergangene + verbleibende Zeit),
-    damit der Balken bei sehr kurzen wie bei sehr langen Restzeiten
-    stets sichtbar und proportional bleibt — statt an einem fixen
-    Datensatz-Referenzwert (z. B. P90), der bei kurzen Restzeiten
-    einen unsichtbaren Balken erzeugt.
-    """
-    vmax = max(elapsed_h + remaining_h, remaining_h * 1.2, 1)
+    vmax = max(float(elapsed_h) + float(remaining_h), float(remaining_h) * 1.2, 1)
     return _base_gauge(
         value=remaining_h,
         value_max=vmax,
@@ -96,15 +60,13 @@ def gauge_remaining_time(remaining_h: float, elapsed_h: float):
 
 
 def gauge_risk(proba_top: float, klasse: int):
-    """Konfidenz der vorhergesagten Risikoklasse (0-100 %)."""
-    color = RISK_COLORS.get(klasse, "#1565c0")
     return _base_gauge(
-        value=proba_top * 100,
+        value=float(proba_top) * 100,
         value_max=100,
-        color=color,
+        color=RISK_COLORS.get(int(klasse), "#1565c0"),
         suffix=" %",
         steps=[
-            {"range": [0, 40],  "color": "#eaf6ec"},
+            {"range": [0, 40], "color": "#eaf6ec"},
             {"range": [40, 70], "color": "#fdf1e0"},
             {"range": [70, 100], "color": "#fbe9e9"},
         ],
